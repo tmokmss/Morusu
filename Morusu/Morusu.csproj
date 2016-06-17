@@ -54,22 +54,22 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BeepEventArgs.cs" />
-    <Compile Include="DxBeemEmitter.cs" />
-    <Compile Include="IBeepEmitter.cs" />
+    <Compile Include="Morse\BeepEventArgs.cs" />
+    <Compile Include="Morse\DxBeemEmitter.cs" />
+    <Compile Include="Morse\IBeepEmitter.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MainForm.Designer.cs">
       <DependentUpon>MainForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="MorseCode.cs" />
-    <Compile Include="MorsePlayer.cs" />
+    <Compile Include="Morse\MorseCode.cs" />
+    <Compile Include="Morse\MorsePlayer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Question.cs" />
-    <Compile Include="QuestionMarker.cs" />
-    <Compile Include="QuestionMaster.cs" />
+    <Compile Include="Quiz\Question.cs" />
+    <Compile Include="Quiz\QuestionMarker.cs" />
+    <Compile Include="Quiz\QuestionMaster.cs" />
     <Compile Include="ResultForm.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Diagnostics; 
 
-namespace Morusu
+namespace Morusu.Morse
 {
     class MorseCode
     {

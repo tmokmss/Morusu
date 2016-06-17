@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Morusu
+namespace Morusu.Morse
 {
     class MorsePlayer : IDisposable
     {

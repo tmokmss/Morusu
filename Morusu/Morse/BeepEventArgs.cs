@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Morusu
+namespace Morusu.Morse
 {
     public class BeepEventArgs : EventArgs
     {

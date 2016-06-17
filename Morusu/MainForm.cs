@@ -3,6 +3,8 @@ using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
+using Morusu.Morse;
+using Morusu.Quiz;
 
 namespace Morusu
 {
@@ -171,9 +173,7 @@ namespace Morusu
             questionTextBox.ScrollToCaret();
         }
 
-        #region CW用　後で隔離せよ
-        // 要実装
-        // http://a1club.net/faq/faq-25.htm
+        #region CW用
         void SetFrequencyAndWPM()
         {
             var wpm = int.Parse(wpmBox.Text);

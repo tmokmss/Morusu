@@ -2,7 +2,7 @@
 using System.Windows.Forms;
 using Microsoft.DirectX.DirectSound;
 
-namespace Morusu
+namespace Morusu.Morse
 {
     /// <summary>
     /// DirectSoundによるIBeepEmitterの実装
