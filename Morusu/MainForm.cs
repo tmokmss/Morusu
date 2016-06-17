@@ -1,14 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Text;
 using System.Windows.Forms;
-using System.Threading;
-using Microsoft.DirectX.DirectSound;
-using System.Diagnostics;
-using System.IO;
 
 namespace Morusu
 {
@@ -18,40 +12,11 @@ namespace Morusu
         private static readonly int Dit = 1;
         private static readonly int Dah = 2;
 
-        //波形の作成に使うものたち
-        static Device device;
-        int Wpm { set; get; }
-        double Frequency { set; get; }
-        int Amplitude { set; get; }
-        string WaveShape { set; get; }
-        BufferDescription bufferDesc;
-        WaveFormat waveFormat;
-        SecondaryBuffer buffer;
-        Thread loopThread;
-        Stopwatch sw = new Stopwatch();
+        MorsePlayer mp;
         
         //押下キー判別に使うものたち
-        bool isDahFirstKeyDown = true;
-        bool isDahKeyDown = false;
-        bool isDitFirstKeyDown = true;
-        bool isDitKeyDown = false;
         MouseButtons mouseDahButton = MouseButtons.Left;
         Keys dahKey = Keys.A;
-
-        //モールス符号生成に使うものたち
-        double bufferDurationSeconds;    // 短点の長さ 基本単位
-        readonly double ditunit = 1.0;
-        public static double dahunit = 3.0;
-        public static double spaceunit = 1.0;
-        double letterspacefac = 1.2; // これだけ余計に空いたら別文字と認識 普通は2だが感覚的には短くとったほうが良い
-        double memoryStartPosition = 1.0; // 0~1でメモリ開始位置を指定 1以上ならメモリ無効
-        MorseCode morseCode = new MorseCode();
-        double intervalTime;    //1000はすぐに上書きされます
-        int squeezeNext;
-
-        //音再生スレッド用からtextBoxにアクセスするデリゲート
-        delegate void writingDelegate(string text);
-        delegate void noargDelegate();
 
         // 問題出題用
         QuestionMaster qmaster;
@@ -64,15 +29,13 @@ namespace Morusu
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            if (device == null)
-            {
-                device = new Device();
-                device.SetCooperativeLevel(this, CooperativeLevel.Priority);
-            }
-            loopThread = new Thread(new ThreadStart(Loop)); // null参照回避
-            sw.Start();
+            var be = new DxBeemEmitter(this);
+            mp = new MorsePlayer(be);
+            mp.Beeped += OnBeeped;
+            mp.LetterCorrected += OnLetterCorrected;
+            mp.SingleLetterFinished += OnSingleLetterFinished;
 
-            SetFrequency();
+            SetFrequencyAndWPM();
             SetAmplitude();
             LoadDictList();
 
@@ -132,7 +95,7 @@ namespace Morusu
                 qmarker = new QuestionMarker();
             }
             qmarker.SetNextQuestion(nextq);
-            qmarker.Wpm = Wpm;
+            qmarker.Wpm = mp.Wpm;
         }
 
         void RefreshResultList()
@@ -170,7 +133,7 @@ namespace Morusu
                     continue;
                 sb.Append(next);
                 sb.Append(" : ");
-                var code = morseCode.GetCode(next);
+                var code = MorseCode.GetCode(next);
                 foreach (char dh in code)
                 {
                     var dhstr = dh.ToString();
@@ -211,132 +174,17 @@ namespace Morusu
         #region CW用　後で隔離せよ
         // 要実装
         // http://a1club.net/faq/faq-25.htm
-        void SetWPM()
+        void SetFrequencyAndWPM()
         {
-            Wpm = int.Parse(wpmBox.Text);
-            bufferDurationSeconds = 1.2 / Wpm;
-            int freqFac = (int)(Frequency / bufferDurationSeconds);
-            Frequency = bufferDurationSeconds * freqFac;
-            frequencyBox.Text = Frequency.ToString();
-        }
-
-        void SetFrequency()
-        {
-            Frequency = int.Parse(frequencyBox.Text);
-            SetWPM();
+            var wpm = int.Parse(wpmBox.Text);
+            var frequency = double.Parse(frequencyBox.Text);
+            mp.SetFrequencyAndWPM(wpm, frequency);
+            frequencyBox.Text = mp.Frequency.ToString();
         }
 
         void SetAmplitude()
         {
-            Amplitude = amplitudeSlider.Value;
-        }
-
-        char[] GenerateOneUnitSound(double lengthFactor)
-        {
-            int numSamples = Convert.ToInt32(lengthFactor * bufferDurationSeconds *
-                waveFormat.SamplesPerSecond * waveFormat.BlockAlign);
-            char[] sampleData = new char[numSamples];
-            double angle = (Math.PI * 2 * Frequency) /
-                (waveFormat.SamplesPerSecond * waveFormat.Channels);
-
-            switch (WaveShape)
-            {
-                default: //case "Square":
-                    for (int i = 0; i < numSamples; i+=1)
-                    {
-                        if (Math.Sin(angle * i) >= 0)
-                            sampleData[i] = (char)Amplitude;
-                        else// if (Math.Sin(angle * i) < 0)
-                            sampleData[i] = (char)(-Amplitude);
-                    }
-                    break;
-
-                case "Sine":
-                    for (int i = 0; i < numSamples; i += 1)
-                    {
-                        sampleData[i] = (char)(Amplitude * Math.Sin(angle * i));
-                    }
-                    break;
-
-                case "Sawtooth":
-                    {
-                        int numOneWave = (int)(numSamples / (Frequency * lengthFactor * bufferDurationSeconds));
-                        int cycle = 1;
-                        int ii = 0;
-                        while (ii < numSamples)
-                        {
-                            for (int jj = numOneWave * (cycle - 1); jj < numOneWave * cycle; jj++)
-                            {
-                                if (ii == numSamples) break;    //配列のインデックスが上限を超えてしまう場合、脱出
-                                sampleData[ii] = (char)(Amplitude * (jj - numOneWave * (cycle - 1)) / numOneWave);
-                                ii++;
-                            }
-                            cycle++;
-                        }
-                    }
-                    break;
-
-                case "Triangle":
-                    {
-                        int numOneWave = (int)(numSamples / (Frequency * lengthFactor * bufferDurationSeconds));
-                        int cycle = 1;
-                        int ii = 0;
-                        bool isUp = true;   //傾きが正か負か
-                        while (ii < numSamples)
-                        {
-                            for (int jj = numOneWave * (cycle - 1) / 2; jj < numOneWave * cycle / 2; jj++)
-                            {
-                                if (ii == numSamples) break;    //配列のインデックスが上限を超えてしまう場合、脱出
-                                if(isUp)
-                                    sampleData[ii] = (char)(Amplitude * (jj - numOneWave * (cycle - 1) / 2) / numOneWave / 2);
-                                else
-                                    sampleData[ii] = (char)(Amplitude * (1 - (jj - numOneWave * (cycle - 1) / 2) / numOneWave / 2));
-                                ii++;
-                            }
-                            cycle++;
-                            isUp = !isUp;
-                        }
-                    }
-                    break;
-
-            }
-
-            return sampleData;
-       }
-
-        private void setBufferAndWave(double lengthFactor)
-        {
-            waveFormat = new Microsoft.DirectX.DirectSound.WaveFormat();
-            waveFormat.SamplesPerSecond = 44140;
-            waveFormat.Channels = 2;
-            waveFormat.FormatTag = WaveFormatTag.Pcm;
-            waveFormat.BitsPerSample = 16;
-            waveFormat.BlockAlign = (short)(waveFormat.Channels * waveFormat.BitsPerSample / 8);
-            waveFormat.AverageBytesPerSecond = waveFormat.BlockAlign * waveFormat.SamplesPerSecond;
-
-            bufferDesc = new BufferDescription(waveFormat);
-            bufferDesc.DeferLocation = true;
-            bufferDesc.Control3D = false;
-            bufferDesc.ControlEffects = false;
-            bufferDesc.ControlFrequency = true;
-            bufferDesc.ControlPan = true;
-            bufferDesc.ControlVolume = true;
-            bufferDesc.GlobalFocus = true;
-            int dee = Convert.ToInt32(lengthFactor * bufferDurationSeconds *
-                waveFormat.AverageBytesPerSecond);
-            bufferDesc.BufferBytes = Convert.ToInt32(lengthFactor * bufferDurationSeconds *
-                waveFormat.AverageBytesPerSecond);
-        }
-
-        private void MainForm_FormClosed(object sender, FormClosedEventArgs e)
-        {
-            //存在すればセカンダリバッファ破棄
-            if (buffer != null)
-                buffer.Dispose();
-            //デバイス破棄
-            device.Dispose();
-            //スレッド破棄
-            loopThread.Abort();
+            mp.Amplitude = amplitudeSlider.Value;
         }
 
         private void AppendDitToBox()
@@ -347,34 +195,6 @@ namespace Morusu
         private void AppendDahToBox()
         {
             ditDahBox.AppendText(" ―");
-        }
-
-        private void BeepDit()
-        {
-            setBufferAndWave(ditunit);
-            buffer = new SecondaryBuffer(bufferDesc, device);
-            buffer.Write(0, GenerateOneUnitSound(ditunit), LockFlag.EntireBuffer);
-            buffer.Volume = (int)Volume.Max;
-            buffer.Play(0, BufferPlayFlags.Default);
-
-            morseCode.Dit();
-            
-            intervalTime = bufferDurationSeconds * (ditunit + spaceunit) * 1000;
-            squeezeNext = Dah;
-        }
-
-        private void BeepDah()
-        {
-            setBufferAndWave(dahunit);
-            buffer = new SecondaryBuffer(bufferDesc, device);
-            buffer.Write(0, GenerateOneUnitSound(dahunit), LockFlag.EntireBuffer);
-            buffer.Volume = (int)Volume.Max;
-            buffer.Play(0, BufferPlayFlags.Default);
-
-            morseCode.Dah();
-
-            intervalTime = bufferDurationSeconds * (dahunit+spaceunit) * 1000;
-            squeezeNext = Dit;
         }
 
         private void deleteOneLetter()
@@ -391,62 +211,15 @@ namespace Morusu
             textBox1.AppendText(addingLetter);
         }
 
-        void MakeNewLoopThread()
-        {
-            loopThread = new Thread(new ThreadStart(Loop));
-            loopThread.Name = "key watching Thread";
-            loopThread.Start();
-        }
-
-        void OnKeyDown(int key)
-        {
-            if (key == Dah)
-            {
-                if (isDahFirstKeyDown)
-                {
-                    isDahKeyDown = true;
-                    if (!loopThread.IsAlive)
-                    {
-                        MakeNewLoopThread();
-                    }
-                }
-            }
-            else // =Dit
-            {
-                if (isDitFirstKeyDown)
-                {
-                    isDitKeyDown = true;
-                    if (!loopThread.IsAlive)
-                    {
-                        MakeNewLoopThread();
-                    }
-                }
-            }
-        }
-
-        void OnKeyUp(int key)
-        {
-            if (key == Dah)
-            {
-                isDahFirstKeyDown = true;
-                isDahKeyDown = false;
-            }
-            else
-            {
-                isDitFirstKeyDown = true;
-                isDitKeyDown = false;
-            }
-        }
-
         private void textBox1_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyData == dahKey ^ invertMouseCheck.Checked)
             {
-                OnKeyDown(Dah);
+                mp.OnKeyDown(Dah);
             }
             else
             {
-                OnKeyDown(Dit);
+                mp.OnKeyDown(Dit);
             }
         }
 
@@ -454,11 +227,11 @@ namespace Morusu
         {
             if (e.KeyData == dahKey ^ invertMouseCheck.Checked)
             {
-                OnKeyUp(Dah);
+                mp.OnKeyUp(Dah);
             }
             else
             {
-                OnKeyUp(Dit);
+                mp.OnKeyUp(Dit);
             }
         }
 
@@ -467,12 +240,12 @@ namespace Morusu
             panel1.BackColor = Color.Gray;
             if (e.Button == mouseDahButton ^ invertMouseCheck.Checked)
             {
-                OnKeyUp(Dah);
+                mp.OnKeyUp(Dah);
             }
 
             else
             {
-                OnKeyUp(Dit);
+                mp.OnKeyUp(Dit);
             }
         }
 
@@ -481,213 +254,56 @@ namespace Morusu
             panel1.BackColor = Color.LightGray;
             if (e.Button == mouseDahButton ^ invertMouseCheck.Checked)
             {
-                OnKeyDown(Dah);
+                mp.OnKeyDown(Dah);
             }
             else
             {
-                OnKeyDown(Dit);
+                mp.OnKeyDown(Dit);
             }
         }
 
-        private void Loop()
+        private void OnBeeped(object sender, BeepEventArgs e)
         {
-            var queue = 0;
-            while (isDitKeyDown || isDahKeyDown)
+            var letter = mp.LetterNow;
+            BeginInvoke((Action)(() => writeLetter(letter)));
+
+            var beepType = e.Type;
+
+            if (letter != "")
             {
-                var letter = "";
-                bool? isLastPosition = null;
-                int justBeeped = 0;
-                if (isDahFirstKeyDown && !isDitKeyDown) //それまで何も押されて無くて、初めてDahが押されたとき
-                {
-                    Console.WriteLine("Dah first pushed");
-                    isDahFirstKeyDown = false;
-                    if (intervalTime != bufferDurationSeconds * (ditunit+spaceunit) * 1000)
-                        intervalTime = bufferDurationSeconds * (dahunit + spaceunit) * 1000;
-                }
-
-                else if (isDitFirstKeyDown && !isDahKeyDown)    //それまで何も押されて無くて、初めてDitが押されたとき
-                {
-                    Console.WriteLine("Dit first pushed");
-                    isDitFirstKeyDown = false;
-                    if (intervalTime != bufferDurationSeconds * (dahunit + spaceunit) * 1000)
-                        intervalTime = bufferDurationSeconds * (ditunit + spaceunit) * 1000;
-                }
-
-                else if (sw.ElapsedMilliseconds > intervalTime) //音を出して良いタイミングに達している
-                {
-                    Console.WriteLine("Beep!");
-                    if (buffer != null)
-                    {
-                        buffer.Dispose();   //メモリを開放する
-                        buffer = null;
-                    }
-
-                    if (isDahKeyDown && isDitKeyDown)   // 両キーが押されている→スクイズ
-                    {
-                        if (squeezeNext == Dit)  //スクイズでDitを出す
-                        {
-                            Console.WriteLine("DitKeyDownsqq");
-                            if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
-                            {
-                                morseCode.Reset();
-                                isLastPosition = qmarker.ProgressNextPosition();
-                            }
-                            else
-                            {
-                                textBox1.BeginInvoke(new noargDelegate(deleteOneLetter));
-                            }
-                            BeepDit();
-                            justBeeped = Dit;
-                            letter = morseCode.CheckCode();
-                            textBox1.BeginInvoke(new writingDelegate(writeLetter), new object[] { letter });
-
-                            sw.Reset();
-                            sw.Start();
-                        }
-                        else  //スクイズでDahを出す
-                        {
-                            Console.WriteLine("DahKeyDownsqq");
-                            if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
-                            {
-                                morseCode.Reset();
-                                isLastPosition = qmarker.ProgressNextPosition();
-                            }
-                            else
-                            {
-                                textBox1.BeginInvoke(new noargDelegate(deleteOneLetter));
-                            }
-                            BeepDah();
-                            justBeeped = Dah;
-                            letter = morseCode.CheckCode();
-                            textBox1.BeginInvoke(new writingDelegate(writeLetter), new object[] { letter });
-
-                            sw.Reset();
-                            sw.Start();
-                        }
-                    }
-
-                    else if (isDahKeyDown)  //Dahのみ押されている
-                    {
-                        Console.WriteLine("DahKeyDown");
-                        if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
-                        {
-                            morseCode.Reset();
-                            isLastPosition = qmarker.ProgressNextPosition();
-                        }
-                        else
-                        {
-                            textBox1.BeginInvoke(new noargDelegate(deleteOneLetter));
-                        }
-                        BeepDah();
-                        justBeeped = Dah;
-                        letter = morseCode.CheckCode();
-                        textBox1.BeginInvoke(new writingDelegate(writeLetter), new object[] { letter });
-
-                        sw.Reset();
-                        sw.Start();
-                    }
-
-                    else if (isDitKeyDown)  //Ditのみ押されている
-                    {
-                        Console.WriteLine("DitKeyDown");
-                        if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
-                        {
-                            morseCode.Reset();
-                            isLastPosition = qmarker.ProgressNextPosition();
-                        }
-                        else
-                        {
-                            textBox1.BeginInvoke(new noargDelegate(deleteOneLetter));
-                        }
-                        BeepDit();
-                        justBeeped = Dit;
-                        letter = morseCode.CheckCode();
-                        textBox1.BeginInvoke(new writingDelegate(writeLetter), new object[] { letter });
-
-                        sw.Reset();
-                        sw.Start();
-                    }
-                    queue = 0;
-                }
-
-                else if (sw.ElapsedMilliseconds > intervalTime * memoryStartPosition)
-                {
-                    if (isDahKeyDown && isDitKeyDown)   // 両キーが押されている→スクイズ
-                    {
-                        queue = squeezeNext;
-                    }
-                    else if (isDahKeyDown)
-                    {
-                        queue = Dah;
-                    }
-                    else if (isDitKeyDown)
-                    {
-                        queue = Dit;
-                    }
-                }
-
-                if (isLastPosition == true)
-                {
-                    // 問題1個打ち終えた場合
-                    SetNextQuestion();  // 後の処理のため、ここはこのスレッドでしっかり済ませる
-                    textBox1.BeginInvoke(new noargDelegate(SetQuestionUI));
-                    textBox1.BeginInvoke(new noargDelegate(RefreshResultList));
-                }
-                if (isLastPosition != null)
-                {
-                    // 1文字打ち終えた場合
-                    textBox1.BeginInvoke(new noargDelegate(RefreshCurrentPosition));
-                }
-                if (letter != "")
-                {
-                    // 何らかのキーが押された場合
-                    qmarker.IsTypedkeyCorrect(letter);
-                }
-                if (justBeeped == Dit)
-                {
-                    // ditが鳴らされた場合
-                    ditDahBox.BeginInvoke(new noargDelegate(AppendDitToBox));
-                }
-                else if (justBeeped == Dah)
-                {
-                    // dahが鳴らされた場合
-                    ditDahBox.BeginInvoke(new noargDelegate(AppendDahToBox));
-                }
+                // 何らかのキーが押された場合
+                qmarker.IsTypedkeyCorrect(letter);
             }
-            if (queue != 0)
+            if (beepType == BeepType.SqueezeDit || beepType == BeepType.OnlyDit)
             {
-                var temp = queue;
-                queue = 0;
-                while (true)
-                {
-                    //Thread.Sleep(1);
-                    if (sw.ElapsedMilliseconds > intervalTime)
-                    {
-                        Console.WriteLine("Memory worked");
-                        if (temp == Dit)
-                        {
-                            this.BeginInvoke((MethodInvoker)delegate ()
-                            {
-                                Thread.Sleep(1);
-                                OnKeyDown(Dit);
-                                Thread.Sleep(1);
-                                OnKeyUp(Dit);
-                            });
-                        }
-                        else
-                        {
-                            this.BeginInvoke((MethodInvoker)delegate()
-                            {
-                                Thread.Sleep(1);
-                                OnKeyDown(Dah);
-                                Thread.Sleep(1);
-                                OnKeyUp(Dah);
-                            });
-                        }
-                        break;
-                    }
-                }
+                // ditが鳴らされた場合
+                ditDahBox.BeginInvoke((Action)(() => AppendDitToBox()));
             }
+            else// if (beepType == Dah)
+            {
+                // dahが鳴らされた場合
+                ditDahBox.BeginInvoke((Action)(() => AppendDahToBox()));
+            }
+        }
+
+        private void OnSingleLetterFinished(object sender, EventArgs e)
+        {
+            // 1文字打ち終えた場合
+            var isLastPosition = qmarker.ProgressNextPosition();
+            BeginInvoke((Action)(()=>RefreshCurrentPosition()));
+
+            if (isLastPosition == true)
+            {
+                // 問題1個打ち終えた場合
+                SetNextQuestion();  // 後の処理のため、ここはこのスレッドでしっかり済ませる
+                BeginInvoke((Action)(() => SetQuestionUI()));
+                BeginInvoke((Action)(() => RefreshResultList()));
+            }
+        }
+        
+        private void OnLetterCorrected(object sender, EventArgs e)
+        {
+            BeginInvoke((Action)(() => deleteOneLetter()));
         }
 
         private void amplitudeSlider_Scroll(object sender, EventArgs e)
@@ -698,12 +314,12 @@ namespace Morusu
         private void frequencyBar_Scroll(object sender, EventArgs e)
         {
             frequencyBox.Text = frequencyBar.Value.ToString();
-            SetFrequency();
+            SetFrequencyAndWPM();
         }
 
         private void waveShapeList_SelectedIndexChanged(object sender, EventArgs e)
         {
-            WaveShape = waveShapeList.Text;
+            mp.WaveShape = waveShapeList.Text;
         }
 
         private void dahKeyButton_Click(object sender, EventArgs e)
@@ -738,9 +354,7 @@ namespace Morusu
             InitializePlayMode();
         }
 
-
         #endregion
-
 
         private void dictList_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -770,7 +384,15 @@ namespace Morusu
         private void wpmBar_ValueChanged(object sender, EventArgs e)
         {
             wpmBox.Text = wpmBar.Value.ToString();
-            SetWPM();
+            SetFrequencyAndWPM();
+        }
+
+        private void MainForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            if(mp!= null)
+            {
+                mp.Dispose();
+            }
         }
 
     }

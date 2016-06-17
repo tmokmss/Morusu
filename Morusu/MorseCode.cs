@@ -18,14 +18,12 @@ namespace Morusu
 
         public MorseCode()  //コンストラクタ
         {
-            dahunit = MainForm.dahunit;
-            spaceunit = MainForm.spaceunit;
             SetMorseHash();
             Reset();
             sw.Start();
         }
 
-        private void SetMorseHash()
+        private static void SetMorseHash()
         {
             mh[""] = "";
             mh["0"] = "T";
@@ -80,7 +78,7 @@ namespace Morusu
             mh["11111111"] = "x";
         }
 
-        public string GetCode(string letter)
+        public static string GetCode(string letter)
         {
             var key = mh.First(x => x.Value == letter).Key;
             return key;

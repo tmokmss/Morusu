@@ -1,4 +1,7 @@
-﻿namespace Morusu
+﻿using System;
+using System.Windows.Forms;
+
+namespace Morusu
 {
     partial class MainForm
     {
