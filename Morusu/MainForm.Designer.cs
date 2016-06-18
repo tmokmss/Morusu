@@ -388,7 +388,7 @@ namespace Morusu
             this.MaximizeBox = false;
             this.MinimumSize = new System.Drawing.Size(300, 305);
             this.Name = "MainForm";
-            this.Text = "Keyer practice";
+            this.Text = "Morusu";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.MainForm_FormClosed);
             this.Load += new System.EventHandler(this.MainForm_Load);
             ((System.ComponentModel.ISupportInitialize)(this.amplitudeSlider)).EndInit();

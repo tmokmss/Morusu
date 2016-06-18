@@ -69,9 +69,21 @@ namespace Morusu.Morse
             loopThread.Start();
         }
 
-        private async void BeepDit()
+        public async void Beep(int DitDah)
         {
-            await Task.Run(() => be.EmitDit());
+            if (DitDah == Dit)
+            {
+                await Task.Run(() => be.EmitDit());
+            }
+            else
+            {
+                await Task.Run(() => be.EmitDah());
+            }
+        }
+
+        private void BeepDit()
+        {
+            Beep(Dit);
 
             morseCode.Dit();
 
@@ -79,9 +91,9 @@ namespace Morusu.Morse
             squeezeNext = Dah;
         }
 
-        private async void BeepDah()
+        private void BeepDah()
         {
-            await Task.Run(() => be.EmitDah());
+            Beep(Dah);
 
             morseCode.Dah();
 
@@ -195,8 +207,8 @@ namespace Morusu.Morse
                             Console.WriteLine("DitKeyDownsqq");
                             if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
                             {
-                                morseCode.Reset();
                                 OnSingleLetterFinished();
+                                morseCode.Reset();
                             }
                             else
                             {
@@ -205,7 +217,6 @@ namespace Morusu.Morse
                             BeepDit();
                             OnBeep(BeepType.SqueezeDit);
                             justBeeped = Dit;
-                            letter = morseCode.CheckCode();
 
                             sw.Reset();
                             sw.Start();
@@ -215,8 +226,8 @@ namespace Morusu.Morse
                             Console.WriteLine("DahKeyDownsqq");
                             if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
                             {
-                                morseCode.Reset();
                                 OnSingleLetterFinished();
+                                morseCode.Reset();
                             }
                             else
                             {
@@ -225,7 +236,6 @@ namespace Morusu.Morse
                             BeepDah();
                             OnBeep(BeepType.SqueezeDah);
                             justBeeped = Dah;
-                            letter = morseCode.CheckCode();
 
                             sw.Reset();
                             sw.Start();
@@ -237,8 +247,8 @@ namespace Morusu.Morse
                         Console.WriteLine("DahKeyDown");
                         if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
                         {
-                            morseCode.Reset();
                             OnSingleLetterFinished();
+                            morseCode.Reset();
                         }
                         else
                         {
@@ -247,7 +257,6 @@ namespace Morusu.Morse
                         BeepDah();
                         OnBeep(BeepType.OnlyDah);
                         justBeeped = Dah;
-                        letter = morseCode.CheckCode();
 
                         sw.Reset();
                         sw.Start();
@@ -258,8 +267,8 @@ namespace Morusu.Morse
                         Console.WriteLine("DitKeyDown");
                         if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
                         {
-                            morseCode.Reset();
                             OnSingleLetterFinished();
+                            morseCode.Reset();
                         }
                         else
                         {
@@ -268,7 +277,6 @@ namespace Morusu.Morse
                         BeepDit();
                         OnBeep(BeepType.OnlyDit);
                         justBeeped = Dit;
-                        letter = morseCode.CheckCode();
 
                         sw.Reset();
                         sw.Start();
