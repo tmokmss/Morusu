@@ -36,7 +36,7 @@ namespace Morusu.Morse
         double dahunit = 3.0;
         double spaceunit = 1.0;
         double letterspacefac = 1.2; // これだけ余計に空いたら別文字と認識 普通は2だが感覚的には短くとったほうが良い
-        double memoryStartPosition = 1.0; // 0~1でメモリ開始位置を指定 1以上ならメモリ無効
+        double memoryStartPosition = 2.0; // 0~1でメモリ開始位置を指定 1以上ならメモリ無効
         double intervalTime;
         int squeezeNext;
 
@@ -75,7 +75,7 @@ namespace Morusu.Morse
             {
                 await Task.Run(() => be.EmitDit());
             }
-            else
+            else if (DitDah == Dah)
             {
                 await Task.Run(() => be.EmitDah());
             }
@@ -176,13 +176,12 @@ namespace Morusu.Morse
         private void Loop()
         {
             var queue = 0;
-            while (isDitKeyDown || isDahKeyDown)
+            //sw.Reset();sw.Start();intervalTime = 1000;
+            while ((isDitKeyDown || isDahKeyDown))// || sw.ElapsedMilliseconds < bufferDurationSeconds*1200)
             {
-                var letter = "";
-                int justBeeped = 0;
                 if (isDahFirstKeyDown && !isDitKeyDown) //それまで何も押されて無くて、初めてDahが押されたとき
                 {
-                    Console.WriteLine("Dah first pushed");
+                    //Console.WriteLine("Dah first pushed");
                     isDahFirstKeyDown = false;
                     if (intervalTime != bufferDurationSeconds * (ditunit + spaceunit) * 1000)
                         intervalTime = bufferDurationSeconds * (dahunit + spaceunit) * 1000;
@@ -190,7 +189,7 @@ namespace Morusu.Morse
 
                 else if (isDitFirstKeyDown && !isDahKeyDown)    //それまで何も押されて無くて、初めてDitが押されたとき
                 {
-                    Console.WriteLine("Dit first pushed");
+                    //Console.WriteLine("Dit first pushed");
                     isDitFirstKeyDown = false;
                     if (intervalTime != bufferDurationSeconds * (dahunit + spaceunit) * 1000)
                         intervalTime = bufferDurationSeconds * (ditunit + spaceunit) * 1000;
@@ -198,98 +197,59 @@ namespace Morusu.Morse
 
                 else if (sw.ElapsedMilliseconds > intervalTime) //音を出して良いタイミングに達している
                 {
-                    Console.WriteLine("Beep!");
-
-                    if (isDahKeyDown && isDitKeyDown)   // 両キーが押されている→スクイズ
+                    #region nominal beep process
+                    var next = 0;
+                    if (isDahKeyDown && isDitKeyDown)
                     {
-                        if (squeezeNext == Dit)  //スクイズでDitを出す
-                        {
-                            Console.WriteLine("DitKeyDownsqq");
-                            if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
-                            {
-                                OnSingleLetterFinished();
-                                morseCode.Reset();
-                            }
-                            else
-                            {
-                                OnLetterCorrected();
-                            }
-                            BeepDit();
-                            OnBeep(BeepType.SqueezeDit);
-                            justBeeped = Dit;
-
-                            sw.Reset();
-                            sw.Start();
-                        }
-                        else  //スクイズでDahを出す
-                        {
-                            Console.WriteLine("DahKeyDownsqq");
-                            if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
-                            {
-                                OnSingleLetterFinished();
-                                morseCode.Reset();
-                            }
-                            else
-                            {
-                                OnLetterCorrected();
-                            }
-                            BeepDah();
-                            OnBeep(BeepType.SqueezeDah);
-                            justBeeped = Dah;
-
-                            sw.Reset();
-                            sw.Start();
-                        }
+                        //Console.Write("Squeeze");
+                        next = squeezeNext;   // 両キーが押されている→スクイズ
+                    }
+                    else if (isDahKeyDown || isDitKeyDown)
+                    {
+                        //Console.Write("Normal");
+                        next = (isDahKeyDown) ? Dah : Dit;
+                    }
+                    else
+                    {
+                        continue;
                     }
 
-                    else if (isDahKeyDown)  //Dahのみ押されている
+                    if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
                     {
-                        Console.WriteLine("DahKeyDown");
-                        if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
-                        {
-                            OnSingleLetterFinished();
-                            morseCode.Reset();
-                        }
-                        else
-                        {
-                            OnLetterCorrected();
-                        }
-                        BeepDah();
-                        OnBeep(BeepType.OnlyDah);
-                        justBeeped = Dah;
-
-                        sw.Reset();
-                        sw.Start();
+                        //Console.WriteLine("A letter finished!");
+                        OnSingleLetterFinished();
+                        morseCode.Reset();
+                    }
+                    else
+                    {
+                        OnLetterCorrected();
                     }
 
-                    else if (isDitKeyDown)  //Ditのみ押されている
+                    if (next == Dit)
                     {
-                        Console.WriteLine("DitKeyDown");
-                        if (morseCode.elapsedMilliseconds() > bufferDurationSeconds * 1000 * (morseCode.NetLengthFactor + letterspacefac * spaceunit))
-                        {
-                            OnSingleLetterFinished();
-                            morseCode.Reset();
-                        }
-                        else
-                        {
-                            OnLetterCorrected();
-                        }
+                        //Console.WriteLine("DitBeep!");
                         BeepDit();
-                        OnBeep(BeepType.OnlyDit);
-                        justBeeped = Dit;
-
-                        sw.Reset();
-                        sw.Start();
+                        OnBeep(BeepType.SqueezeDit);
                     }
-                    queue = 0;
+                    else if (next == Dah)
+                    {
+                        //Console.WriteLine("DahBeep!");
+                        BeepDah();
+                        OnBeep(BeepType.SqueezeDah);
+                    }
+                    sw.Reset();
+                    sw.Start();
+                    #endregion
                 }
 
                 else if (sw.ElapsedMilliseconds > intervalTime * memoryStartPosition)
                 {
                     if (isDahKeyDown && isDitKeyDown)   // 両キーが押されている→スクイズ
                     {
+                    Console.WriteLine("memory updated");
                         queue = squeezeNext;
                     }
+                    /*
                     else if (isDahKeyDown)
                     {
                         queue = Dah;
@@ -298,6 +258,7 @@ namespace Morusu.Morse
                     {
                         queue = Dit;
                     }
+                    */
                 }
             }
             // 要実装
@@ -308,26 +269,25 @@ namespace Morusu.Morse
                 queue = 0;
                 while (true)
                 {
-                    //Thread.Sleep(1);
+                    Console.WriteLine("Memory worked");
                     if (sw.ElapsedMilliseconds > intervalTime)
                     {
-                        Console.WriteLine("Memory worked");
                         if (temp == Dit)
                         {
-                            Thread.Sleep(1);
-                            OnKeyDown(Dit);
-                            Thread.Sleep(1);
-                            OnKeyUp(Dit);
+                            BeepDit();
+                            OnBeep(BeepType.SqueezeDit);
+                            OnSingleLetterFinished();
+                            morseCode.Reset();
                         }
                         else
                         {
-                            Thread.Sleep(1);
-                            OnKeyDown(Dah);
-                            Thread.Sleep(1);
-                            OnKeyUp(Dah);
+                            BeepDah();
+                            OnBeep(BeepType.SqueezeDah);
+                            OnSingleLetterFinished();
+                            morseCode.Reset();
                         }
-                        break;
                     }
+                    break;
                 }
             }
         }
