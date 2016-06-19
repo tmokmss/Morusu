@@ -10,9 +10,6 @@ namespace Morusu.Morse
     class DxBeemEmitter : IBeepEmitter
     {
         static Device device;
-        Form parent;
-        BufferDescription bufferDesc;
-        WaveFormat waveFormat;
         SecondaryBuffer buffer;
 
         public double DitLengthSecond { set; get; }
@@ -21,11 +18,11 @@ namespace Morusu.Morse
         public string WaveShape { set; get; }
 
         readonly double ditunit = 1.0;
+        int samplesPerSecond = 44100;
         double dahunit = 3.0;
 
         public DxBeemEmitter(Form parent)
         {
-            this.parent = parent;
             if (device == null)
             {
                 device = new Device();
@@ -41,7 +38,6 @@ namespace Morusu.Morse
         public void EmitDah()
         {
             setBufferAndWave(dahunit);
-            buffer = new SecondaryBuffer(bufferDesc, device);
             buffer.Write(0, GenerateOneUnitSound(dahunit), LockFlag.EntireBuffer);
             buffer.Volume = (int)Volume.Max;
             buffer.Play(0, BufferPlayFlags.Default);
@@ -50,7 +46,6 @@ namespace Morusu.Morse
         public void EmitDit()
         {
             setBufferAndWave(ditunit);
-            buffer = new SecondaryBuffer(bufferDesc, device);
             buffer.Write(0, GenerateOneUnitSound(ditunit), LockFlag.EntireBuffer);
             buffer.Volume = (int)Volume.Max;
             buffer.Play(0, BufferPlayFlags.Default);
@@ -58,11 +53,12 @@ namespace Morusu.Morse
 
         char[] GenerateOneUnitSound(double lengthFactor)
         {
+            var waveFormat = buffer.Format;
             int numSamples = Convert.ToInt32(lengthFactor * DitLengthSecond *
-                waveFormat.SamplesPerSecond * waveFormat.BlockAlign);
+                samplesPerSecond * waveFormat.BlockAlign);
             char[] sampleData = new char[numSamples];
             double angle = (Math.PI * 2 * Frequency) /
-                (waveFormat.SamplesPerSecond * waveFormat.Channels);
+                (samplesPerSecond * waveFormat.Channels);
 
             switch (WaveShape)
             {
@@ -131,15 +127,15 @@ namespace Morusu.Morse
 
         private void setBufferAndWave(double lengthFactor)
         {
-            waveFormat = new WaveFormat();
-            waveFormat.SamplesPerSecond = 44140;
+            var waveFormat = new WaveFormat();
+            waveFormat.SamplesPerSecond = samplesPerSecond;
             waveFormat.Channels = 2;
             waveFormat.FormatTag = WaveFormatTag.Pcm;
             waveFormat.BitsPerSample = 16;
             waveFormat.BlockAlign = (short)(waveFormat.Channels * waveFormat.BitsPerSample / 8);
             waveFormat.AverageBytesPerSecond = waveFormat.BlockAlign * waveFormat.SamplesPerSecond;
 
-            bufferDesc = new BufferDescription(waveFormat);
+            var bufferDesc = new BufferDescription(waveFormat);
             bufferDesc.DeferLocation = true;
             bufferDesc.Control3D = false;
             bufferDesc.ControlEffects = false;
@@ -147,24 +143,28 @@ namespace Morusu.Morse
             bufferDesc.ControlPan = true;
             bufferDesc.ControlVolume = true;
             bufferDesc.GlobalFocus = true;
-            int dee = Convert.ToInt32(lengthFactor * DitLengthSecond *
-                waveFormat.AverageBytesPerSecond);
             bufferDesc.BufferBytes = Convert.ToInt32(lengthFactor * DitLengthSecond *
                 waveFormat.AverageBytesPerSecond);
 
             if (buffer != null)
             {
-                //メモリを開放しておく
+                buffer.Stop();
                 buffer.Dispose();
                 buffer = null;
             }
+
+            buffer = new SecondaryBuffer(bufferDesc, device);
+            bufferDesc.Dispose();
+            bufferDesc = null;
         }
 
         public void Dispose()
         {
-            //存在すればセカンダリバッファ破棄
             if (buffer != null)
+            {
                 buffer.Dispose();
+                buffer = null;
+            }
             //デバイス破棄
             device.Dispose();
         }

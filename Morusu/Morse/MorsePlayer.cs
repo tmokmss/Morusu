@@ -69,36 +69,22 @@ namespace Morusu.Morse
             loopThread.Start();
         }
 
-        public async void Beep(int DitDah)
+        private async void BeepDit()
         {
-            if (DitDah == Dit)
-            {
-                await Task.Run(() => be.EmitDit());
-            }
-            else if (DitDah == Dah)
-            {
-                await Task.Run(() => be.EmitDah());
-            }
-        }
-
-        private void BeepDit()
-        {
-            Beep(Dit);
-
             morseCode.Dit();
-
             intervalTime = bufferDurationSeconds * (ditunit + spaceunit) * 1000;
             squeezeNext = Dah;
+
+            await Task.Run(()=>be.EmitDit());
         }
 
-        private void BeepDah()
+        private async void BeepDah()
         {
-            Beep(Dah);
-
             morseCode.Dah();
-
             intervalTime = bufferDurationSeconds * (dahunit + spaceunit) * 1000;
             squeezeNext = Dit;
+
+            await Task.Run(()=>be.EmitDah());
         }
 
         void OnSingleLetterFinished()
