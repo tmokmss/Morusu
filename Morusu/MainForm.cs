@@ -31,6 +31,7 @@ namespace Morusu
 
         private void MainForm_Load(object sender, EventArgs e)
         {
+            // 音声再生周りの初期化
             var be = new DxBeemEmitter(this);
             mp = new MorsePlayer(be);
             mp.Beeped += OnBeeped;
@@ -39,15 +40,16 @@ namespace Morusu
 
             SetFrequencyAndWPM();
             SetAmplitude();
-            LoadDictList();
 
             waveShapeList.SelectedIndex = 0;
             
+            LoadDictList();
             InitializePlayMode();
         }
 
         void LoadDictList()
         {
+            InitializeDictionaryIfUnavailable();
             dictList.Items.Clear();
             string[] files = Directory.GetFiles(@"dict\", "*.dic");
             foreach (var file in files)
@@ -55,6 +57,22 @@ namespace Morusu
                 dictList.Items.Add(Path.GetFileName(file));
             }
             dictList.SelectedIndex = 0;
+        }
+
+        void InitializeDictionaryIfUnavailable()
+        {
+            if (!Directory.Exists(@"dict\"))
+            {
+                Directory.CreateDirectory(@"dict\");
+            }
+            if (Directory.GetFiles(@"dict\", "*.dic").Length == 0)
+            {
+                using (var sw = new StreamWriter(@"dict\example.dic", false, Encoding.GetEncoding("Shift_Jis")))
+                {
+                    var text = "表示部用名称,打鍵用名称, \r\n例,REI\r\nカンマが1つだけ存在する行のみ処理される\r\n元となる日本語辞書はここなどで拾えるhttp://bironist.so.land.to/uploader/upload.html";
+                    sw.Write(text);
+                }
+            }
         }
 
         void InitializePlayMode() 

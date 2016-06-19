@@ -8,10 +8,10 @@ namespace Morusu.Quiz
     class QuestionMaster
     {
         List<Question> qlist;
-        QuestionReader reader = new QuestionReader();
 
         public void SetQuestion(string qpath)
         {
+            var reader = new QuestionReader();
             qlist = reader.ReadFile(qpath);
         }
 
