@@ -172,6 +172,14 @@ h2 {
   font-size: 32px;
 }
 
+.warning {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--pad-active);
+  font-size: 14px;
+}
+
 .hint {
   font-size: 13px;
   color: var(--muted);

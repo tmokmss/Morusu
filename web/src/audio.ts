@@ -10,6 +10,11 @@ export class Beeper {
     if (this.ctx.state === "suspended") void this.ctx.resume();
   }
 
+  // 出力先の機器までの遅延（秒）。outputLatencyが無いブラウザでは0
+  get latency() {
+    return this.ctx ? this.ctx.baseLatency + (this.ctx.outputLatency ?? 0) : 0;
+  }
+
   beep(seconds: number) {
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
