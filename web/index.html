@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Morusu</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Morusu</h1>
+      <p>問題文に合わせてモールス符号を打ってみよう</p>
+    </header>
+
+    <main>
+      <section class="play">
+        <div class="question">
+          <div id="original" class="original"></div>
+          <div id="alphabet" class="alphabet"></div>
+        </div>
+
+        <div class="keying">
+          <div>
+            <div class="label">打鍵</div>
+            <div id="typed" class="typed"></div>
+            <div id="marks" class="marks"></div>
+          </div>
+          <div>
+            <div class="label">次の文字</div>
+            <div id="teacher" class="teacher"></div>
+          </div>
+        </div>
+
+        <div id="pad" class="pad">
+          <button type="button" data-paddle="dah"><span>―</span>Dah</button>
+          <button type="button" data-paddle="dit"><span>・</span>Dit</button>
+        </div>
+        <p class="hint">キーボード: <kbd id="dah-key-hint">A</kbd> = Dah、その他のキー = Dit。マウスの右ボタンは押した側の反対になります。両方押すと交互に鳴ります。</p>
+
+        <div class="results-head">
+          <h2>これまでの問題</h2>
+          <button type="button" id="finish">結果</button>
+        </div>
+        <table class="results">
+          <thead><tr><th>Question</th><th>Ur Keying</th><th>Acc.</th><th>WPM</th></tr></thead>
+          <tbody id="results"></tbody>
+        </table>
+      </section>
+
+      <aside class="settings">
+        <h2>設定</h2>
+        <label>辞書
+          <select id="dict"></select>
+        </label>
+        <label class="file">辞書を追加（1行に「表示用,打鍵用」）
+          <input type="file" id="dict-file" accept=".dic,.csv,.txt" />
+        </label>
+        <label><span>速度 <output id="wpm-out"></output> wpm</span>
+          <input type="range" id="wpm" min="1" max="60" />
+        </label>
+        <label><span>周波数 <output id="freq-out"></output> Hz</span>
+          <input type="range" id="freq" min="20" max="5000" />
+        </label>
+        <label>音量
+          <input type="range" id="volume" min="0" max="100" />
+        </label>
+        <label>波形
+          <select id="wave">
+            <option value="sine">正弦波</option>
+            <option value="square">矩形波</option>
+            <option value="triangle">三角波</option>
+            <option value="sawtooth">鋸波</option>
+          </select>
+        </label>
+        <label>Dahのキー
+          <button type="button" id="dah-key"></button>
+        </label>
+        <label class="check"><input type="checkbox" id="invert" /> DahとDitを入れ替える</label>
+      </aside>
+    </main>
+
+    <footer>Bluetoothイヤホンは音が遅れて届くため、符号の数がずれます。内蔵スピーカーか有線イヤホンで遊んでください。</footer>
+
+    <dialog id="result-dialog">
+      <h2>結果</h2>
+      <dl class="summary">
+        <div><dt>カウント</dt><dd id="r-count"></dd></div>
+        <div><dt>平均精度</dt><dd id="r-acc"></dd></div>
+        <div><dt>平均WPM</dt><dd id="r-wpm"></dd></div>
+      </dl>
+      <form id="register" class="register">
+        <input id="name" placeholder="なまえ" maxlength="18" required />
+        <button>足跡を残す</button>
+      </form>
+      <h3 id="cwer-count"></h3>
+      <div class="history-wrap">
+        <table class="results">
+          <thead><tr><th>Name</th><th>Acc.</th><th>WPM</th><th>Cnt</th><th>Date</th></tr></thead>
+          <tbody id="history"></tbody>
+        </table>
+      </div>
+      <form method="dialog"><button>閉じて最初から</button></form>
+    </dialog>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
