@@ -1,0 +1,327 @@
+:root {
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --text: #1d1d1b;
+  --muted: #6b6a64;
+  --line: #dddbd3;
+  --accent: #c2410c;
+  --ok: #15803d;
+  --ng: #b91c1c;
+  --pad: #ecebe5;
+  --pad-active: #fed7aa;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161615;
+    --surface: #222220;
+    --text: #ecebe5;
+    --muted: #9c9a92;
+    --line: #3a3936;
+    --accent: #fb923c;
+    --ok: #4ade80;
+    --ng: #f87171;
+    --pad: #2e2d2a;
+    --pad-active: #7c2d12;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  line-height: 1.5;
+}
+
+header,
+main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+header h1 {
+  margin: 24px 0 0;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+}
+
+header p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+main {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: start;
+  padding-bottom: 32px;
+}
+
+@media (max-width: 760px) {
+  main {
+    grid-template-columns: 1fr;
+  }
+}
+
+section,
+aside {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 0;
+}
+
+h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.original {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.alphabet {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 28px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.alphabet .ok {
+  color: var(--ok);
+}
+
+.alphabet .ng {
+  color: var(--ng);
+  text-decoration: line-through;
+}
+
+.alphabet .current {
+  color: var(--text);
+  border-bottom: 3px solid var(--accent);
+}
+
+.keying {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 16px 0;
+  border-block: 1px solid var(--line);
+}
+
+.label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.typed {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 24px;
+  min-height: 36px;
+  overflow-wrap: anywhere;
+}
+
+.marks,
+.teacher {
+  font-size: 18px;
+  min-height: 27px;
+}
+
+.pad {
+  display: flex;
+  gap: 8px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.pad.inverted {
+  flex-direction: row-reverse;
+}
+
+.pad button {
+  flex: 1;
+  height: 140px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--pad);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+}
+
+.pad button.down {
+  background: var(--pad-active);
+}
+
+.pad span {
+  display: block;
+  font-size: 32px;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+kbd {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.results-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+button {
+  font: inherit;
+}
+
+#finish,
+dialog button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+#finish:disabled,
+dialog button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.results th,
+.results td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.results th {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.settings label.check {
+  flex-direction: row;
+  align-items: center;
+}
+
+.settings select,
+.settings input[type="range"],
+.settings #dah-key {
+  width: 100%;
+}
+
+.settings select,
+.settings #dah-key,
+.register input {
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.settings input[type="range"] {
+  accent-color: var(--accent);
+}
+
+.settings .file input {
+  font-size: 13px;
+}
+
+dialog {
+  width: min(640px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 20px;
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.summary {
+  display: flex;
+  gap: 24px;
+  margin: 12px 0;
+}
+
+.summary dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.summary dd {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.register {
+  display: flex;
+  gap: 8px;
+}
+
+.register input {
+  flex: 1;
+  font: inherit;
+}
+
+dialog h3 {
+  font-size: 14px;
+  margin: 16px 0 0;
+  color: var(--muted);
+}
+
+.history-wrap {
+  max-height: 240px;
+  overflow: auto;
+  margin-bottom: 16px;
+}
