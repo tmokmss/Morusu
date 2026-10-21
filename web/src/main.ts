@@ -101,14 +101,7 @@ function startQuiz() {
   renderResults();
 }
 
-keyer.onElement = () => {
-  renderKeying();
-  // Bluetoothなどで遅延が大きいと、キーヤーが次の符号を決める時点で前の音がまだ聞こえていない
-  const ms = Math.round(beeper.latency * 1000);
-  const warning = $("latency-warning");
-  warning.hidden = ms <= 100;
-  warning.textContent = `音声出力の遅延が${ms}msあります。符号の数がずれるので、内蔵スピーカーか有線イヤホンで遊んでください。`;
-};
+keyer.onElement = renderKeying;
 keyer.onLetter = (code) => {
   if (quiz.type(decode(code), settings.wpm)) renderResults();
   renderQuestion();
